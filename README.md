@@ -43,5 +43,5 @@ curl -X POST http://localhost:3000/notifications \
 
 Результат: Вы увидите JSON-логи всех запросов и событий приложения.
 <p align="center">
-  <img src="./run_time.png" alt="Запуск логов" width="600"/>
+  <img src="./test.png" alt="Запуск логов" width="600"/>
 </p>
