@@ -41,8 +41,12 @@ curl -X POST http://localhost:3000/notifications \
 В логах consumer-service вы увидите предупреждение о дубликате, а второе сообщение в Telegram не придет.<br/>
 Это обеспечивается проверкой UUID через Redis.<br/>
 
-Результат: Проверка на идемпотентность.
+### Скриншот №1:  Проверка на идемпотентность.
 <p align="center">
   <img src="./test.png" alt="Запуск логов" width="600"/>
 </p>
 
+### Скриншот №2:  Проверка работы RabbitMQ.
+<p align="center">
+  <img src="./test-1.png" alt="запрос" width="600"/>
+</p>
