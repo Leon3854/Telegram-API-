@@ -22,3 +22,21 @@ Telegram-API-/
 ├── docker-compose.yml   # Общий запуск (Rabbit + оба сервиса)
 └── .env                 # Общие секреты
 ```
+## Как протестировать
+### Запуск: 
+```bash
+docker-compose up --build -d
+```
+Тестовый запрос:
+```bash
+bashcurl -X POST http://localhost:3000/notifications \
+     -H "Content-Type: application/json" \
+     -d '{
+       "messageId": "550e8400-e29b-41d4-a716-446655440000",
+       "text": "Привет! Тестовое задание выполнено. ВОЛНА!",
+       "targetId": "357249227"
+     }'
+```
+Используйте код с осторожностью.Проверка идемпотентности: Отправьте этот же запрос еще раз.<br/>
+В логах consumer-service вы увидите предупреждение о дубликате, а второе сообщение в Telegram не придет.<br/>
+Это обеспечивается проверкой UUID через Redis.<br/>
