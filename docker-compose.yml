@@ -1,18 +1,24 @@
-
-
 services:
   # Брокер сообщений
   rabbitmq:
     image: rabbitmq:3-management
     container_name: rabbitmq
     ports:
-      - "5672:5672"   # Порт для связи
-      - "15672:15672" # Админка (guest/guest)
+      - "5672:5672"
+      - "15672:15672"
     healthcheck:
       test: ["CMD", "rabbitmq-diagnostics", "check_running"]
       interval: 5s
       timeout: 5s
       retries: 5
+
+  # Хранилище для проверки дублей (Идемпотентность)
+  redis:
+    image: redis:alpine
+    container_name: redis
+    ports:
+      - "6379:6379"
+    restart: always
 
   # Сервис-отправитель (Producer)
   producer:
@@ -32,8 +38,11 @@ services:
     container_name: consumer-service
     environment:
       - RABBITMQ_URL=amqp://guest:guest@rabbitmq:5672
+      - REDIS_URL=redis://redis:6379 # <--- Добавили связь с Redis
       - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN}
       - MY_TELEGRAM_ID=${MY_TELEGRAM_ID}
     depends_on:
       rabbitmq:
         condition: service_healthy
+      redis: # <--- Ждем, пока Redis поднимется
+        condition: service_started
