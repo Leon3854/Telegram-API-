@@ -33,7 +33,7 @@ curl -X POST http://localhost:3000/notifications \
      -H "Content-Type: application/json" \
      -d '{
        "messageId": "550e8400-e29b-41d4-a716-446655440000",
-       "text": "Привет! Тестовое задание выполнено. ВОЛНА!",
+       "text": "Привет! Тестовое сообщение.",
        "targetId": "357249227"
      }'
 ```
