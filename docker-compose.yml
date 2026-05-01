@@ -34,8 +34,8 @@ services:
 
   # Сервис-обработчик (Consumer)
   consumer:
-    build: ./consumer-service
-    container_name: consumer-service
+    build: ./consumers-service
+    container_name: consumers-service
     environment:
       - RABBITMQ_URL=amqp://guest:guest@rabbitmq:5672
       - REDIS_URL=redis://redis:6379 # <--- Добавили связь с Redis
