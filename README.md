@@ -14,14 +14,11 @@ Consumer (Receiver) Service получает сообщения из RabbitMQ и
 Ожидаемый результат: репозиторий с кодом (GitHub / GitLab / Bitbucket) и инструкцией по запуску проекта.
 
 
-## Стурктура проекта по принципу монорепозитория. 
+## Стурктура проекта. 
 ```bash
 Telegram-API-/
-├── apps/
-│   ├── producer-service/    # Принимает HTTP, пуляет в Rabbit
-│   └── consumer-service/    # Слушает Rabbit, пуляет в Telegram
-├── libs/
-│   └── common/             # Общие интерфейсы, UUID-валидаторы, DTO
-├── docker-compose.yml       # Главный рубильник (App + Rabbit + Redis)
-└── README.md                # Твоя инструкция по запуску
+├── producer-service/    # Папка с первым NestJS проектом (API)
+├── consumer-service/    # Папка со вторым NestJS проектом (Worker)
+├── docker-compose.yml   # Общий запуск (Rabbit + оба сервиса)
+└── .env                 # Общие секреты
 ```
