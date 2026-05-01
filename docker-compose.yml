@@ -1,0 +1,39 @@
+
+
+services:
+  # Брокер сообщений
+  rabbitmq:
+    image: rabbitmq:3-management
+    container_name: rabbitmq
+    ports:
+      - "5672:5672"   # Порт для связи
+      - "15672:15672" # Админка (guest/guest)
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "check_running"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # Сервис-отправитель (Producer)
+  producer:
+    build: ./producer-service
+    container_name: producer-service
+    ports:
+      - "3000:3000"
+    environment:
+      - RABBITMQ_URL=amqp://guest:guest@rabbitmq:5672
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+
+  # Сервис-обработчик (Consumer)
+  consumer:
+    build: ./consumer-service
+    container_name: consumer-service
+    environment:
+      - RABBITMQ_URL=amqp://guest:guest@rabbitmq:5672
+      - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN}
+      - MY_TELEGRAM_ID=${MY_TELEGRAM_ID}
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
