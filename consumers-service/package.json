@@ -1,5 +1,5 @@
 {
-  "name": "producer-service",
+  "name": "consumers-service",
   "version": "0.0.1",
   "description": "",
   "author": "",
@@ -22,13 +22,9 @@
   "dependencies": {
     "@nestjs/common": "^11.0.1",
     "@nestjs/core": "^11.0.1",
-    "@nestjs/microservices": "^11.1.19",
     "@nestjs/platform-express": "^11.0.1",
-    "amqp-connection-manager": "^5.0.0",
-    "amqplib": "^1.0.3",
     "reflect-metadata": "^0.2.2",
-    "rxjs": "^7.8.1",
-    "telegraf": "^4.16.3"
+    "rxjs": "^7.8.1"
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3.2.0",
