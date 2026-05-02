@@ -1,0 +1,33 @@
+name: CI-Check
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '20'
+
+      - name: Install & Test Consumer
+        run: |
+          cd consumers-service
+          npm install
+          npm run test
+        env:
+          TELEGRAM_BOT_TOKEN: "test_token"
+
+      - name: Build Producer
+        run: |
+          cd producer-service
+          npm install
+          npm run build
