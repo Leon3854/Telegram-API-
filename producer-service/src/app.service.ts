@@ -8,7 +8,7 @@ export class AppService {
   private readonly logger = new Logger(AppService.name);
 
   constructor(
-    @Inject('NOTIFY_SERVICE') private readonly client: ClientProxy,
+    @Inject('RMQ_SERVICE') private readonly client: ClientProxy,
   ) {}
 
   async sendToQueue(data: SendNotificationDto) {

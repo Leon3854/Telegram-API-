@@ -10,7 +10,7 @@ import { ClientsModule, Transport } from '@nestjs/microservices';
         name: 'RMQ_SERVICE',
         transport: Transport.RMQ,
         options: {
-          urls: [process.env.RABBITMQ_URL || 'amqp://guest:guest@localhost:5672'],
+          urls: [process.env.RABBITMQ_URL || 'amqp://guest:guest@rabbitmq:5672'],
           queue: 'telegram_queue',
           queueOptions: {
             durable: true, // Чтобы сообщения не пропадали при рестарте Rabbit
