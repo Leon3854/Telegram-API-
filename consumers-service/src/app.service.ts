@@ -2,6 +2,8 @@ import { Injectable, Logger } from '@nestjs/common';
 import { SendNotificationDto } from './dto/send-notification.dto';
 import { Telegraf } from 'telegraf';
 import Redis from 'ioredis';
+import { RedisProvider } from './providers/redis.provider';
+import { TelegramProvider } from './providers/telegram.provider';
 
 @Injectable()
 export class AppService {
@@ -9,46 +11,32 @@ export class AppService {
   private readonly bot: Telegraf;
   private readonly redis: Redis;
 
-  constructor() {
-		const token = process.env.TELEGRAM_BOT_TOKEN;
-		if (!token) {
-			throw new Error('TELEGRAM_BOT_TOKEN must be defined in .env');
-		}
-    this.bot = new Telegraf(token);
-    this.redis = new Redis({
-      host: process.env.REDIS_HOST || 'redis',
-      port: Number(process.env.REDIS_PORT) || 6379,
-    });
-  }
+  constructor(
+		private readonly redisProvider: RedisProvider,
+  	private readonly telegramProvider: TelegramProvider,
+	) {}
 
-  async handleNotification(data: SendNotificationDto) {
+	async handleNotification(data: SendNotificationDto) {
     const { messageId, text, targetId } = data;
 
-    // 1. ПРОВЕРКА НА ДУБЛИКАТЫ (Идемпотентность через Redis)
-    const isProcessed = await this.redis.set(
-      `msg:${messageId}`, 
-      'processed', 
-      'EX', 
-      86400,
-			'NX' 
-    );
+    // ИСПОЛЬЗУЕМ ПРОВАЙДЕР (было this.redis.set)
+    const isDuplicate = await this.redisProvider.isDuplicate(messageId);
 
-    if (!isProcessed) {
-      this.logger.warn(`Сообщение ${messageId} уже обрабатывалось. Пропускаем.`);
+    if (isDuplicate) {
+      this.logger.warn(`⚠️ Сообщение ${messageId} — дубликат. Пропускаем.`);
       return { status: 'duplicate' };
     }
 
     try {
-      // 2. ОТПРАВКА В TELEGRAM
-      await this.bot.telegram.sendMessage(targetId, text);
-      this.logger.log(`Сообщение ${messageId} успешно отправлено в Telegram`);
+      // ИСПОЛЬЗУЕМ ПРОВАЙДЕР (было this.bot.telegram.sendMessage)
+      await this.telegramProvider.sendMessage(targetId, text);
+      this.logger.log(`🚀 Сообщение ${messageId} доставлено в Telegram`);
       
-      return { status: 'ok', id: messageId };
+      return { status: 'ok' };
     } catch (error) {
-      this.logger.error(`Ошибка Telegram API: ${error.message}`);
-      // Если упало — удаляем из редиса, чтобы ретрай от Продусера мог пройти снова
-      await this.redis.del(`msg:${messageId}`);
-      throw error;
+      this.logger.error(`❌ Ошибка обработки: ${error.message}`);
+      await this.redisProvider.removeLock(messageId);
+      throw error; 
     }
   }
 }
