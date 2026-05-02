@@ -51,3 +51,26 @@ curl -X POST http://localhost:3000/notifications \
 <p align="center">
   <img src="./test-1.png" alt="запрос" width="600"/>
 </p>
+
+
+## Как теперь работать (алгоритм):
+### Вариант А: 
+  Если хочешь видеть логи и Swagger прямо сейчас (через Docker) то сделай 
+```bash
+docker-compose up --build,
+```
+после не нужно запускать<br/>
+```bash
+npm run start:dev
+```
+в терминале. Приложение уже крутится в Докере.
+  Чтобы видеть, что происходит, открой новое окно терминала и пиши: bashdocker-compose logs -f producer
+Ты увидишь, как NestJS внутри контейнера реагирует на твои действия.
+
+### Вариант Б: 
+  Если хочешь запустить локально (без Докера), нужно зайти в папку сервиса:
+  ```bash
+  cd producer-service
+  npm run start:dev
+```
+
