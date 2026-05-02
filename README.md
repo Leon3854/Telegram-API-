@@ -74,3 +74,10 @@ npm run start:dev
   npm run start:dev
 ```
 
+## Проверка «на лету»:
+
+Зайди на http://localhost:3000/api, нажми Try it out на методе POST и пульни новый запрос (не забудь поменять messageId).
+
+Затем нажми Execute:
+
+
