@@ -78,6 +78,8 @@ npm run start:dev
 
 Зайди на http://localhost:3000/api, нажми Try it out на методе POST и пульни новый запрос (не забудь поменять messageId).
 
-Затем нажми Execute:
-
+Затем нажми Execute: ожидаемый результат
+<p align="center">
+  <img src="./execute.png" alt="Responses" width="600"/>
+</p>
 
