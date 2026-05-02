@@ -116,3 +116,10 @@ docker-compose logs -f producer
 cd consumers-service
 npm run test
 ```
+
+## Итог:
+> Код на GitHub ✅
+> Инструкция ✅
+> Swagger-документация  ✅
+> Скриншоты-доказательства ✅
+                       
