@@ -45,6 +45,11 @@ docker-compose down
 
 docker rm -f $(docker ps -aq) - Принудительно чистим все контейнеры
 ```
+Проверьте package.json в consumers-service: 
+Убедитесь, что там есть ioredis и telegraf. Если нет:
+```bash
+npm install
+```
 
 ### Запуск: 
 ```bash
