@@ -1,0 +1,32 @@
+# AI Context & Instructions for Telegram-API Project
+
+## 1. Project Overview
+Это микросервисная система уведомлений на NestJS.
+- **Producer Service**: API-шлюз (порт 3000), принимает HTTP POST и пушит в RabbitMQ.
+- **Consumer Service**: Воркер, слушает RabbitMQ, проверяет идемпотентность через Redis и шлет в Telegram.
+
+## 2. Core Tech Stack
+- NestJS (Microservices)
+- RabbitMQ (Transport)
+- Redis (Idempotency Lock)
+- Telegraf (Telegram Bot API)
+- Swagger (Documentation)
+- Jest (Unit Testing)
+
+## 3. Architecture Rules (SOLID & Clean)
+- **Изоляция**: Сервисы независимы. Общение ТОЛЬКО через RabbitMQ паттерном `emit` (Event-driven).
+- **Провайдеры**: Логика работы с инфраструктурой (Redis, Telegram) ВСЕГДА выносится в `src/providers`.
+- **DTO**: Все входящие данные должны быть валидированы через `class-validator` и описаны для Swagger через `@ApiProperty`.
+
+## 4. Business Logic: Idempotency (КРИТИЧНО)
+Перед отправкой уведомления ОБЯЗАТЕЛЬНО проверить `messageId` в Redis:
+- Использовать команду `SET key value NX EX 86400`.
+- Если ключ существует — игнорировать (дубликат).
+- Если отправка в Telegram упала — УДАЛИТЬ ключ из Redis, чтобы разрешить ретрай.
+
+## 5. Reliability Rules
+- Используется **Manual Ack** в RabbitMQ. Подтверждать сообщение (`channel.ack`) только после успешной обработки или осознанного пропуска дубликата.
+- Продюсер использует `retry(3)` и `timeout(5000)` при работе с очередью.
+
+## 6. How to extend
+- Чтобы добавить новый канал (например, Email), создай новый `EmailProvider` в `consumers-service` и внедри его в `AppService`. Не ломай существующую логику Telegram.
