@@ -43,6 +43,8 @@ Telegram-API-/
 │   │   ├── grpc.controller.ts # Прием gRPC звонков
 │   │   └── main.ts            # Hybrid: RMQ + gRPC + HTTP Metrics
 │   └── Dockerfile
+├── .ai-instructions           # [AI GOVERNANCE] Общие правила для LLM
+├── .cursorrules               # [AI GOVERNANCE] Жесткие инструкции для Cursor IDE
 └── docker-compose.yml         # [ORCHESTRATOR] 10 контейнеров в одной сети
 
 ```
