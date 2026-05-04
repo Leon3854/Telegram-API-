@@ -3,6 +3,7 @@ import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { ClientsModule, Transport } from '@nestjs/microservices';
 import { PrometheusModule } from '@willsoto/nestjs-prometheus';
+import { join } from 'path';
 
 @Module({
   imports: [
@@ -18,6 +19,15 @@ import { PrometheusModule } from '@willsoto/nestjs-prometheus';
           },
         },
       },
+			{
+				name: 'NOTIFY_PACKAGE',
+				transport: Transport.GRPC,
+				options: {
+					package: 'notification',
+					protoPath: join(process.cwd(), 'proto/notification.proto'),
+					url: 'consumers-service:50051', // Стучимся в соседний контейнер
+				},
+			},
     ]),
 		PrometheusModule.register(), // Это создаст эндпоинт /metrics автоматически
   ],

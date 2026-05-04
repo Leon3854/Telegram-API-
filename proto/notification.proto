@@ -1,0 +1,15 @@
+syntax = "proto3";
+
+package notification;
+
+service NotificationService {
+  // Метод для быстрой проверки статуса
+  rpc CheckStatus (Empty) returns (StatusResponse);
+}
+
+message Empty {}
+
+message StatusResponse {
+  bool status = 1;
+  string message = 2;
+}

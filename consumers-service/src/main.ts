@@ -4,6 +4,7 @@ import { AppModule } from './app.module';
 import * as winston from 'winston';
 import LokiTransport from 'winston-loki';
 import { WinstonModule } from 'nest-winston';
+import { join } from 'path';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule, {
@@ -36,6 +37,16 @@ async function bootstrap() {
       queue: 'telegram_queue',
       noAck: false,
       queueOptions: { durable: true },
+    },
+  });
+
+	// Микросервис gRPC (добавляем)
+  app.connectMicroservice<MicroserviceOptions>({
+    transport: Transport.GRPC,
+    options: {
+      package: 'notification',
+      protoPath: join(process.cwd(), 'proto/notification.proto'),
+      url: '0.0.0.0:50051',
     },
   });
 
