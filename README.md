@@ -49,6 +49,41 @@ Telegram-API-/
 
 ```
 
+### Схема взаимодействия (Data Flow)
+
+```mermaid
+graph TD
+    subgraph "AI Governance Layer"
+        AI_Rules[".ai-instructions & .cursorrules"]
+    end
+
+    AI_Rules -. "Enforce Rules" .-> Producer
+    AI_Rules -. "Enforce Rules" .-> Consumer
+
+    User((User/Swagger)) -- HTTP POST --> Producer[Producer Service]
+    
+    subgraph "Sync Check (gRPC)"
+        Producer -- gRPC:50051 --> Consumer[Consumer Service]
+    end
+
+    subgraph "Async Flow (RMQ)"
+        Producer -- Event: Emit --> RMQ[(RabbitMQ)]
+        RMQ -- Event: Consume --> Consumer
+    end
+
+    subgraph "Logic & Reliability"
+        Consumer -- Idempotency --> Redis[(Redis)]
+        Consumer -- Delivery --> TG[Telegram API]
+    end
+
+    subgraph "Observability"
+        Prom[(Prometheus)] --- Grafana[Grafana]
+        Loki[(Loki Logs)] --- Grafana
+    end
+```
+
+
+
 ### Архитектурный выбор:
 
 Для данного задания выбрана структура изолированных микросервисов (Independent Services), а не монорепозитория. Это позволило обеспечить максимально быструю и простую среду для развертывания и тестирования (stress-test ready).
