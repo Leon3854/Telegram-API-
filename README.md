@@ -15,6 +15,16 @@
   Настройка и документация API через Swagger, покрытие кода тестами (Jest / e2e).
   Ожидаемый результат: репозиторий с кодом (GitHub / GitLab / Bitbucket) и инструкцией по запуску проекта.
 
+## mermaid-диаграмма
+graph LR
+  A[Client] -->|HTTP| B[Producer :3000]
+  B -->|gRPC Health| C[Consumer :50051]
+  B -->|RMQ| D[RabbitMQ]
+  C -->|Pull| D
+  C -->|Dedup| E[Redis]
+  C -->|Send| F[Telegram]
+
+
 
 ## Стурктура проекта. На момент зовершения ТЗ 
 ```bash
