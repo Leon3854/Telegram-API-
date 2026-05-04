@@ -16,7 +16,7 @@
   Ожидаемый результат: репозиторий с кодом (GitHub / GitLab / Bitbucket) и инструкцией по запуску проекта.
 
 
-## Стурктура проекта. Начаты изменения 
+## Стурктура проекта. На момент зовершения ТЗ 
 ```bash
 Telegram-API-/
 ├── producer-service/    # Папка с первым NestJS проектом (API)
@@ -24,6 +24,30 @@ Telegram-API-/
 ├── docker-compose.yml   # Общий запуск (Rabbit + оба сервиса)
 └── .env                 # Общие секреты
 ```
+
+## Текущая структура с учетом новых дополнений
+```bash
+Telegram-API-/
+├── proto/                     # [CONTRACT] Бинарный контракт gRPC (.proto)
+├── infra/                     # [MONITORING] Конфиги наблюдаемости
+│   ├── prometheus/            # Настройки сбора метрик (prometheus.yml)
+│   └── loki/                  # Настройки логирования (promtail-config.yml)
+├── producer-service/          # [API GATEWAY] (NestJS)
+│   ├── src/
+│   │   ├── main.ts            # Winston + Loki + Swagger + Metrics
+│   │   ├── app.controller.ts  # HTTP Эндпоинты
+│   │   └── app.service.ts     # Дирижер: gRPC Call -> RabbitMQ Emit
+│   └── Dockerfile             # Multi-stage build
+├── consumers-service/         # [WORKER] (NestJS Hybrid)
+│   ├── src/
+│   │   ├── providers/         # SOLID: Redis & Telegram logic
+│   │   ├── grpc.controller.ts # Прием gRPC звонков
+│   │   └── main.ts            # Hybrid: RMQ + gRPC + HTTP Metrics
+│   └── Dockerfile
+└── docker-compose.yml         # [ORCHESTRATOR] 10 контейнеров в одной сети
+
+```
+
 ### Архитектурный выбор:
 
 Для данного задания выбрана структура изолированных микросервисов (Independent Services), а не монорепозитория. Это позволило обеспечить максимально быструю и простую среду для развертывания и тестирования (stress-test ready).
@@ -77,6 +101,26 @@ Telegram-API-/
 **Что это дает:** 
 <p>Теперь можно видеть графики нагрузки из Prometheus и текстовые логи из Loki в одной экосистеме. Это позволяет проводить корреляцию:  видеть, какие именно ошибки вызвали всплеск потребления CPU.</p> 
 
+## Межсервисное взаимодействие (gRPC)
+
+Помимо асинхронного RabbitMQ, в систему внедрена **синхронная «спецсвязь» через gRPC**.
+
+- **Протокол**: Бинарный протокол передачи данных (Protocol Buffers).
+- **Кейс использования**: Продюсер выполняет синхронный `Health Check` Консьюмера перед тем, как принять сообщение от клиента. Это гарантирует, что воркер готов к работе еще до постановки задачи в очередь.
+- **Контракт**: Описан в файле `proto/notification.proto`.
+
+### Как это проверить:
+1. При отправке POST запроса через Swagger, Продюсер делает gRPC-вызов к Консьюмеру на порт `50051`.
+2. В логах Продюсера (`docker logs producer-service`) вы увидите ответ:
+   `gRPC Response: { status: true, message: 'Consumer is healthy...' }`
+
+## Как это работает теперь:
+- **HTTP (Swagger)** -> Прием запроса.
+- **gRPC** -> Проверка доступности воркера.
+- **RabbitMQ** -> Постановка задачи в очередь.
+- **Redis** -> Проверка идемпотентности.
+- **Telegram API** -> Финальная доставка.
+- **Prometheus / Loki** -> Тотальный контроль на каждом этапе.
 
 
 ## Как протестировать
