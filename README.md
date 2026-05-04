@@ -16,7 +16,7 @@
   Ожидаемый результат: репозиторий с кодом (GitHub / GitLab / Bitbucket) и инструкцией по запуску проекта.
 
 ## mermaid-диаграмма
-```bash
+```mermaid
 graph LR
   A[Client] -->|HTTP| B[Producer :3000]
   B -->|gRPC Health| C[Consumer :50051]
