@@ -11,6 +11,8 @@ services:
       interval: 5s
       timeout: 5s
       retries: 5
+    networks:
+      - app-network
 
   # Хранилище для проверки дублей (Идемпотентность)
   redis:
@@ -19,6 +21,13 @@ services:
     ports:
       - "6379:6379"
     restart: always
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+    networks:
+      - app-network
 
   # Сервис-отправитель (Producer)
   producer:
@@ -31,6 +40,8 @@ services:
     depends_on:
       rabbitmq:
         condition: service_healthy
+    networks:
+      - app-network
 
   # Сервис-обработчик (Consumer)
   consumer:
@@ -38,11 +49,63 @@ services:
     container_name: consumers-service
     environment:
       - RABBITMQ_URL=amqp://guest:guest@rabbitmq:5672
-      - REDIS_URL=redis://redis:6379 # <--- Добавили связь с Redis
+      - REDIS_URL=redis://redis:6379
       - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN}
       - MY_TELEGRAM_ID=${MY_TELEGRAM_ID}
     depends_on:
       rabbitmq:
         condition: service_healthy
-      redis: # <--- Ждем, пока Redis поднимется
-        condition: service_started
+      redis:
+        condition: service_healthy    # <--- Исправлено на healthy
+    networks:
+      - app-network
+
+  # Мониторинг
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: prometheus
+    volumes:
+      - ./infra/prometheus:/etc/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+    ports:
+      - "9090:9090"
+    networks:
+      - app-network
+
+  loki:
+    image: grafana/loki:latest
+    container_name: loki
+    ports:
+      - "3100:3100"
+    networks:
+      - app-network
+
+  grafana:
+    image: grafana/grafana:latest
+    container_name: grafana
+    ports:
+      - "3001:3000"
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_PASSWORD:-admin}  # <--- Из .env
+    depends_on:
+      - prometheus
+      - loki
+    networks:
+      - app-network
+
+  promtail:
+    image: grafana/promtail:latest
+    container_name: promtail
+    user: "0:0"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - ./infra/loki/promtail-config.yml:/etc/promtail/config.yml
+    command: -config.file=/etc/promtail/config.yml
+    depends_on:
+      - loki
+
+
+networks:
+  app-network:
+    driver: bridge 
