@@ -31,7 +31,8 @@ Telegram-API-/
 ├── proto/                     # [CONTRACT] Бинарный контракт gRPC (.proto)
 ├── infra/                     # [MONITORING] Конфиги наблюдаемости
 │   ├── prometheus/            # Настройки сбора метрик (prometheus.yml)
-│   └── loki/                  # Настройки логирования (promtail-config.yml)
+│   ├── loki/                  # Настройки логирования (promtail-config.yml)
+│   └── grafana/               # [DASHBOARDS] Визуализация (Provisioning & Dashboards)
 ├── producer-service/          # [API GATEWAY] (NestJS)
 │   ├── src/
 │   │   ├── main.ts            # Winston + Loki + Swagger + Metrics
