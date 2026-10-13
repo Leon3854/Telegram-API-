@@ -1,294 +1,72 @@
-# Telegram-API
+# Telegram API — микросервисы уведомлений
 
-## Цель: разработать микросервисную архитектуру на основе Nest.js с использованием RabbitMQ и Telegram API.
+Надёжная доставка уведомлений в Telegram через микросервисы NestJS + RabbitMQ + Redis + gRPC с полным observability-стеком.
 
-### 1. Producer и Consumer сервисы для RabbitMQ
-  Нужно реализовать два микросервиса, взаимодействующих через брокер сообщений RabbitMQ.
-  Producer (Sender) Service отправляет сообщения в RabbitMQ. Должен поддерживать отправку событий с уникальным идентификатором (например, UUID) для обеспечения идемпотентности, сериализацию данных в формате JSON, подтверждение успешной отправки сообщений и ретраи на случай временных ошибок соединения.
-  Consumer (Receiver) Service получает сообщения из RabbitMQ и выполняет их обработку. Должен обеспечивать автоматическое или ручное подтверждение обработки сообщений, реализовывать механизм повторной обработки в случае ошибки и логировать успешные и неуспешные обработки.
-### 2. Сервис отправки уведомлений в Telegram
-  Реализовать сервис, который принимает входящие события и отправляет соответствующие уведомления в Telegram (в произвольном формате) через Telegram Bot API.
-### 3. Дополнительные требования
-  Использовать Nest.js с модульной архитектурой, Docker для развёртывания сервисов и придерживаться принципов SOLID и чистой архитектуры.
-### 4. Будет плюсом
-  Настройка и документация API через Swagger, покрытие кода тестами (Jest / e2e).
-  Ожидаемый результат: репозиторий с кодом (GitHub / GitLab / Bitbucket) и инструкцией по запуску проекта.
+![NestJS](https://img.shields.io/badge/NestJS-11-E0234E?style=for-the-badge&logo=nestjs)
+![TypeScript](https://img.shields.io/badge/TypeScript-5-3178C6?style=for-the-badge&logo=typescript)
+![RabbitMQ](https://img.shields.io/badge/RabbitMQ-3-FF6600?style=for-the-badge&logo=rabbitmq)
+![Redis](https://img.shields.io/badge/Redis-7-DC382D?style=for-the-badge&logo=redis)
+![gRPC](https://img.shields.io/badge/gRPC-244C5A?style=for-the-badge)
+![Grafana](https://img.shields.io/badge/Grafana-F46800?style=for-the-badge&logo=grafana)
+![Docker](https://img.shields.io/badge/Docker-Compose-2496ED?style=for-the-badge&logo=docker)
 
-## Стурктура проекта. На момент зовершения ТЗ 
+## Что это
+
+Два изолированных микросервиса с гарантированной доставкой событий в Telegram:
+
+- **Producer** (API-шлюз) — принимает HTTP-запросы (Swagger), проверяет доступность воркера по gRPC и кладёт событие в RabbitMQ.
+- **Consumer** (воркер) — гибридный сервис (RMQ + gRPC + HTTP-метрики): дедупликация через Redis и отправка в Telegram Bot API.
+
+## Поток данных
+
+```
+HTTP (Swagger) → gRPC health-check → RabbitMQ → Redis (идемпотентность) → Telegram API
+                       ↓
+              Prometheus / Loki / Grafana (контроль на каждом этапе)
+```
+
+## Ключевые свойства
+
+- **Идемпотентность** — UUID каждого сообщения проверяется через Redis, дубликаты отсекаются.
+- **Manual Ack** — подтверждение только после успешной обработки; `at-least-once` доставка без явных ретраев.
+- **gRPC health-check** — продюсер синхронно проверяет готовность воркера до постановки в очередь.
+- **Observability** — Prometheus (RPS, CPU, event loop lag) + Loki (структурированные логи) в Grafana.
+- **CI/CD** — GitHub Actions: build-check и unit-тесты на каждый push в `main`.
+
+## Быстрый старт
+
 ```bash
-Telegram-API-/
-├── producer-service/    # Папка с первым NestJS проектом (API)
-├── consumer-service/    # Папка со вторым NestJS проектом (Worker)
-├── docker-compose.yml   # Общий запуск (Rabbit + оба сервиса)
-└── .env                 # Общие секреты
-```
-
-> **Важное примечание:** Стек технологий для данного ТЗ - избыточен. Однако целью проекта было не перенасыщение системы лишними инструментами, а отработка владения стеком для обеспечения **максимальной надежности и прозрачности** системы. Особый акцент сделан на отработке ведения технической документации и подготовке проекта к эксплуатации.
-
-## Текущая структура с учетом новых дополнений
-```bash
-Telegram-API-/
-├── proto/                     # [CONTRACT] Бинарный контракт gRPC (.proto)
-├── infra/                     # [MONITORING] Конфиги наблюдаемости
-│   ├── prometheus/            # Настройки сбора метрик (prometheus.yml)
-│   ├── loki/                  # Настройки логирования (promtail-config.yml)
-│   └── grafana/               # [DASHBOARDS] Визуализация (Provisioning & Dashboards)
-├── producer-service/          # [API GATEWAY] (NestJS)
-│   ├── src/
-│   │   ├── main.ts            # Winston + Loki + Swagger + Metrics
-│   │   ├── app.controller.ts  # HTTP Эндпоинты
-│   │   └── app.service.ts     # Дирижер: gRPC Call -> RabbitMQ Emit
-│   └── Dockerfile             # Multi-stage build
-├── consumers-service/         # [WORKER] (NestJS Hybrid)
-│   ├── src/
-│   │   ├── providers/         # SOLID: Redis & Telegram logic
-│   │   ├── grpc.controller.ts # Прием gRPC звонков
-│   │   └── main.ts            # Hybrid: RMQ + gRPC + HTTP Metrics
-│   └── Dockerfile
-├── .ai-instructions           # [AI GOVERNANCE] Общие правила для LLM
-├── .cursorrules               # [AI GOVERNANCE] Жесткие инструкции для Cursor IDE
-└── docker-compose.yml         # [ORCHESTRATOR]  Все контейнеры в одной сети
-
-```
-
-### Схема взаимодействия (Data Flow)
-
-```mermaid
-graph TD
-    subgraph "AI Governance Layer"
-        AI_Rules[".ai-instructions & .cursorrules"]
-    end
-
-    AI_Rules -. "Enforce Rules" .-> Producer
-    AI_Rules -. "Enforce Rules" .-> Consumer
-
-    User((User/Swagger)) -- HTTP POST --> Producer[Producer Service]
-    
-    subgraph "Sync Check (gRPC)"
-        Producer -- gRPC:50051 --> Consumer[Consumer Service]
-    end
-
-    subgraph "Async Flow (RMQ)"
-        Producer -- Event: Emit --> RMQ[(RabbitMQ)]
-        RMQ -- Event: Consume --> Consumer
-    end
-
-    subgraph "Logic & Reliability"
-        Consumer -- Idempotency --> Redis[(Redis)]
-        Consumer -- Delivery --> TG[Telegram API]
-    end
-
-    subgraph "Observability"
-        Prom[(Prometheus)] --- Grafana[Grafana]
-        Loki[(Loki Logs)] --- Grafana
-    end
-```
-
-
-
-### Архитектурный выбор:
-
-Для данного задания выбрана структура изолированных микросервисов (Independent Services), а не монорепозитория. Это позволило обеспечить максимально быструю и простую среду для развертывания и тестирования (stress-test ready).
-
-В условиях реального production-окружения данная база легко масштабируется:<br/>
-Дублирующиеся DTO выносятся в Shared Library.<br/>
-Добавляется ConfigModule для управления секретами.<br/>
-Внедряются Quorum Queues в RabbitMQ для обеспечения высокой доступности (High Availability).<br/>
-Так же будут применены блокировки с временным лагом алгоритмы для защиты от ботов<br/>
-Защита от сторонних инъекций для ДТО<br/>
-И много других решений.
-
-## Добавлена. Автоматизация и Качество (CI/CD)
-
-В проекте настроен **GitHub Actions** (CI pipeline). При каждом `push` в ветку `main` система автоматически:
-1. Проверяет синтаксис и собирает оба микросервиса (`Build check`).
-2. Запускает Unit-тесты для проверки логики идемпотентности (`Test check`).
-3. Гарантирует стабильность кодовой базы перед деплоем.
-
-## Добавлена. AI-инструкция
-Проект готов к работе с AI. Код — AI-Ready.<br/>
-- **`.cursorrules` & `.ai-instructions`**: Сформирован свод правил для LLM, который описывает контекст микросервисов, правила работы с RabbitMQ (Manual Ack) и механизм идемпотентности в Redis.
-- **Предотвращение галлюцинаций**: Инструкции жестко фиксируют архитектурные границы (SOLID, использование провайдеров), гарантируя, что генерируемый AI код будет соответствовать стандартам проекта.
-- **Cross-platform**: Поддержка различных AI-инструментов обеспечивает быструю адаптацию (onboarding) новых разработчиков в проект.
-
-## Мониторинг и Наблюдаемость (Observability)
-Система оснащена полноценным стеком мониторинга для контроля состояния микросервисов в реальном времени:
-
-- **Prometheus**: Собирает метрики (RPS, CPU, Memory, Event Loop Lag) с обоих сервисов через эндпоинты `/metrics`.
-- **Grafana**: Визуализирует данные. В проект включен преднастроенный дашборд (ID: 11159) для анализа производительности Node.js.
-- **Интеграция**: Каждый сервис является гибридным — обрабатывает бизнес-логику (RMQ) и отдает метрики по HTTP.
-**Как посмотреть графики:**
-1. Зайдите в **Grafana**: `http://localhost:3001` (admin/admin).
-2. Источник данных (Prometheus) уже настроен на `http://prometheus:9090`.
-3. Вы увидите реальную нагрузку на систему при отправке уведомлений через Swagger.
-
-## Централизованное логирование (Grafana Loki)
-
-В проект интегрирован стек Loki + Winston, который позволяет собирать и анализировать логи всех микросервисов в едином интерфейсе.
-- **Как это работает:**
-- **Direct Push:** Микросервисы используют транспорт winston-loki для прямой отправки логов в Loki по HTTP. Это обходит ограничения Docker Desktop на macOS и гарантирует доставку логов.
-- **Метки (Labels):** Каждое сообщение помечается лейблом app (producer-service или consumers-service), что позволяет мгновенно фильтровать потоки данных.
-
-**Как просматривать логи:**
-> Зайдите в Grafana: http://localhost:3001<br/>
-> Перейдите в раздел Explore (иконка компаса слева).<br/>
-> Выберите источник данных Loki.<br/>
-> Нажмите Label browser и выберите app -> producer-service.<br/>
-> Нажмите Run query в правом верхнем углу.<br/>
-
-**Что это дает:** 
-<p>Теперь можно видеть графики нагрузки из Prometheus и текстовые логи из Loki в одной экосистеме. Это позволяет проводить корреляцию:  видеть, какие именно ошибки вызвали всплеск потребления CPU.</p> 
-
-## Межсервисное взаимодействие (gRPC)
-
-Помимо асинхронного RabbitMQ, в систему внедрена **синхронная «спецсвязь» через gRPC**.
-
-- **Протокол**: Бинарный протокол передачи данных (Protocol Buffers).
-- **Кейс использования**: Продюсер выполняет синхронный `Health Check` Консьюмера перед тем, как принять сообщение от клиента. Это гарантирует, что воркер готов к работе еще до постановки задачи в очередь.
-- **Контракт**: Описан в файле `proto/notification.proto`.
-
-### Как это проверить:
-1. При отправке POST запроса через Swagger, Продюсер делает gRPC-вызов к Консьюмеру на порт `50051`.
-2. В логах Продюсера (`docker logs producer-service`) вы увидите ответ:
-   `gRPC Response: { status: true, message: 'Consumer is healthy...' }`
-
-## Как это работает теперь:
-- **HTTP (Swagger)** -> Прием запроса.
-- **gRPC** -> Проверка доступности воркера.
-- **RabbitMQ** -> Постановка задачи в очередь.
-- **Redis** -> Проверка идемпотентности.
-- **Telegram API** -> Финальная доставка.
-- **Prometheus / Loki** -> Тотальный контроль на каждом этапе.
-
-## mermaid-диаграмма
-```mermaid
-graph LR
-  A[Client] -->|HTTP| B[Producer :3000]
-  B -->|gRPC Health| C[Consumer :50051]
-  B -->|RMQ| D[RabbitMQ]
-  C -->|Pull| D
-  C -->|Dedup| E[Redis]
-  C -->|Send| F[Telegram]
-```
-
-## Как протестировать
-
-### Перед запуском:
-Перед запуском подчистим все контейнеры для того что бы избежать проблем
-```bash
-docker-compose down
-
-docker rm -f $(docker ps -aq) - Принудительно чистим все контейнеры
-```
-Проверьте package.json в consumers-service: 
-Убедитесь, что там есть ioredis и telegraf. Если нет:
-```bash
-npm install
-```
-
-### Запуск: 
-```bash
+# Поднять весь стек (RabbitMQ + Redis + producer + consumer + мониторинг)
 docker-compose up --build -d
-```
-Тестовый запрос:
-```bash
+
+# Тестовое уведомление
 curl -X POST http://localhost:3000/notifications \
-     -H "Content-Type: application/json" \
-     -d '{
-       "messageId": "550e8400-e29b-41d4-a716-446655440000",
-       "text": "Привет! Тестовое сообщение.",
-       "targetId": "357249227"
-     }'
-```
-Проверка идемпотентности: 
-В логах consumer-service  увидешь предупреждение о дубликате, а второе сообщение в Telegram не придет.<br/>
-Это обеспечивается проверкой UUID через Redis.<br/>
-
-### Скриншот №1:  Проверка на идемпотентность.
-<p align="center">
-  <img src="./test.png" alt="Запуск логов" width="600"/>
-</p>
-
-### Скриншот №2:  Проверка работы RabbitMQ.
-<p align="center">
-  <img src="./test-1.png" alt="запрос" width="600"/>
-</p>
-
-
-## Как теперь работать (алгоритм):
-### Вариант А: 
-  Если хочешь видеть логи и Swagger прямо сейчас (через Docker) то сделай 
-```bash
-docker-compose up --build,
-```
-после не нужно запускать<br/>
-```bash
-npm run start:dev
-```
-в терминале. Приложение уже крутится в Докере.
-  Чтобы видеть, что происходит, открой новое окно терминала и пиши: 
-  ```bash
-docker-compose logs -f producer
-```
-Ты увидишь, как NestJS внутри контейнера реагирует на твои действия.
-
-### Вариант Б: 
-  Если хочешь запустить локально (без Докера), нужно зайти в папку сервиса:
-  ```bash
-  cd producer-service
-  npm run start:dev
+  -H "Content-Type: application/json" \
+  -d '{"messageId":"550e8400-e29b-41d4-a716-446655440000","text":"Привет!","targetId":"357249227"}'
 ```
 
-## Проверка «на лету»:
+- Swagger: http://localhost:3000/api
+- Grafana: http://localhost:3001 (admin/admin)
+- Повторный запрос с тем же `messageId` → предупреждение о дубликате в логах consumer, второе сообщение не уйдёт.
 
-Зайди на http://localhost:3000/api, нажми Try it out на методе POST и пульни новый запрос (не забудь поменять messageId).
+## Тесты
 
-Затем нажми Execute: ожидаемый результат
-<p align="center">
-  <img src="./execute.png" alt="Responses" width="600"/>
-</p>
-
-### Скриншот №3:  Логи.
-
-<p align="center">
-  <img src="./logs.png" alt="Логи" width="600"/>
-</p>
-
-<p>
-Почему эти логи — «золотые»:<br/>
-Надежность RabbitMQ: <br/>
-Мы видем, как пачкой вывалились сообщения? Это те самые запросы, которые  отправлял вчера и сегодня. Они не пропали, когда сервис лежал или когда мы его пересобирали. Кролик честно хранил их в очереди (благодаря durable: true) и высыпал в консьюмер сразу после старта.
-  
-Работа Manual Ack: <br/>
-Строки "Ошибка обработки, сообщение остается в очереди" подтверждают, 
-что ручное подтверждение работает. **Используется механизм RabbitMQ unacked messages 
-вместо явного nack** — если consumer падает или не подтверждает сообщение, 
-RabbitMQ автоматически возвращает его в очередь для повторной обработки. 
-Это стандартный паттерн "at-least-once delivery" без лишнего хардкода ретраев.
-
-Поскольку Telegram API недоступен (из-за отсутствия VPN в контейнере), 
-консьюмер не подтверждает получение, и RabbitMQ будет хранить их вечно, 
-пока они не будут доставлены. Это и есть гарантия доставки!
-
-Идемпотентность в будущем: <br/>
-Как только включишь VPN или запустишь консьюмер локально, все эти сообщения обработаются. И если RabbitMQ случайно пришлет одно из них дважды — то Redis (который уже «Started» и «Running») его отсечёт.
-</p>
-
-### Скриншот №4:  Юнит тест.
-
-<p align="center">
-  <img src="./unit.png" alt="результат юинт теста" width="600"/>
-</p>
-
-Для запуска теста:
 ```bash
 cd consumers-service
 npm run test
 ```
 
-## Итог:
-> Код на GitHub ✅<br/>
-> Инструкция ✅<br/>
-> Swagger-документация ✅<br/>
-> Скриншоты-доказательства ✅<br/>
-                       
+## Структура
+
+```text
+Telegram-API-/
+├── producer-service/          # NestJS API-шлюз (Swagger, gRPC-клиент, RabbitMQ emit)
+├── consumers-service/         # NestJS hybrid-воркер (RMQ + gRPC + Redis + Telegram)
+├── proto/notification.proto   # gRPC-контракт
+├── infra/                     # Prometheus / Loki / Grafana
+└── docker-compose.yml
+```
+
+## Примечания по продакшену
+
+База готова к масштабированию: shared library для DTO, ConfigModule для секретов, Quorum Queues в RabbitMQ, защита DTO от инъекций.
